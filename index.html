@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nol Ticket 搶票手速練習 - Yin Kwan 專用</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #000;
+      color: #fff;
+      text-align: center;
+      overflow: hidden;
+    }
+    #container {
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.8em;
+      margin: 10px 0;
+    }
+    .screen {
+      display: none;
+      padding: 30px 20px;
+      min-height: 60vh;
+      box-sizing: border-box;
+    }
+    #queueScreen {
+      background: linear-gradient(#111, #000);
+    }
+    #countdownScreen {
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    #buttonScreen {
+      background: #111;
+    }
+    #count {
+      font-size: 4.5em;
+      font-weight: bold;
+      margin: 20px 0;
+      color: #ffcc00;
+    }
+    .info {
+      font-size: 1.1em;
+      line-height: 1.6;
+      margin: 15px 0;
+      color: #ccc;
+    }
+    button {
+      background: linear-gradient(#0066cc, #004080);
+      color: white;
+      border: none;
+      padding: 20px 60px;
+      font-size: 1.6em;
+      font-weight: bold;
+      border-radius: 12px;
+      margin: 40px auto;
+      display: block;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+      transition: all 0.12s;
+    }
+    button:hover {
+      background: linear-gradient(#0080ff, #0060cc);
+      transform: translateY(-3px);
+    }
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.6);
+    }
+    #countdown {
+      font-size: 8em;
+      font-weight: 900;
+      color: #ff3333;
+      text-shadow: 0 0 20px #ff0000;
+      margin: 0;
+      line-height: 1;
+    }
+    #countdownText {
+      font-size: 2.2em;
+      color: #ffffff;
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    .small {
+      font-size: 0.95em;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+<div id="container">
+
+  <!-- 等待畫面 (原樣保留) -->
+  <div id="queueScreen" class="screen">
+    <h1>접속 인원이 많아 대기 중입니다.</h1>
+    <div class="info">
+      나의 대기순서<br>
+      <div id="count">11,601</div>
+      전체 도전자 수: 50,000명<br><br>
+      첫 클릭 반응속도: — ms<br>
+      최종 접속 반응속도: — ms
+    </div>
+  </div>
+
+  <!-- 改進的 Nol 風格倒數畫面 -->
+  <div id="countdownScreen" class="screen">
+    <div id="countdownText">오픈 준비 중입니다</div>
+    <div id="countdown">5</div>
+    <div class="small" style="margin-top:30px;">화면을 뚫어지게 보세요!<br>버튼이 뜨는 순간 바로 클릭!</div>
+  </div>
+
+  <!-- 按鈕出現畫面 -->
+  <div id="buttonScreen" class="screen">
+    <h1 style="color:#0f0; font-size:2.2em; margin:60px 0 40px;">지금 접속하세요!</h1>
+    <button id="bigButton">접속하기</button>
+    <div class="info small" style="margin-top:50px;">
+      點擊後顯示你的反應時間<br>
+      目標：<150ms = 神級手速
+    </div>
+  </div>
+
+  <!-- 結果畫面 (原樣) -->
+  <div id="resultScreen" class="screen">
+    <h1>你的反應時間</h1>
+    <div id="finalTime" style="font-size:5em; font-weight:bold; color:#0f0;">— ms</div>
+    <div class="info">
+      <p id="comment"></p>
+    </div>
+    <button onclick="resetAll()">再次挑戰</button>
+  </div>
+
+</div>
+
+<script>
+  const queueScreen = document.getElementById('queueScreen');
+  const countdownScreen = document.getElementById('countdownScreen');
+  const buttonScreen = document.getElementById('buttonScreen');
+  const resultScreen = document.getElementById('resultScreen');
+  const countdownEl = document.getElementById('countdown');
+  const finalTimeEl = document.getElementById('finalTime');
+  const commentEl = document.getElementById('comment');
+  const bigButton = document.getElementById('bigButton');
+
+  let startTime = 0;
+  let countdownTimer;
+
+  function hideAll() {
+    queueScreen.style.display = 'none';
+    countdownScreen.style.display = 'none';
+    buttonScreen.style.display = 'none';
+    resultScreen.style.display = 'none';
+  }
+
+  function startPractice() {
+    hideAll();
+    queueScreen.style.display = 'block';
+    
+    // 隨機 3～12 秒後進入倒數（模擬真實開賣不確定性）
+    const randomDelay = Math.random() * 9000 + 3000;
+    setTimeout(() => {
+      hideAll();
+      countdownScreen.style.display = 'flex';
+      let cd = 5;  // Nol 常見從 5 開始
+      countdownEl.textContent = cd;
+      
+      countdownTimer = setInterval(() => {
+        cd--;
+        countdownEl.textContent = cd;
+        if (cd <= 0) {
+          clearInterval(countdownTimer);
+          hideAll();
+          buttonScreen.style.display = 'block';
+          startTime = performance.now();
+        }
+      }, 900);  // 稍快一點，增加緊張感（真實約 800-1000ms）
+    }, randomDelay);
+  }
+
+  // 點擊大按鈕記錄時間
+  bigButton.addEventListener('click', () => {
+    const clickTime = performance.now();
+    const reaction = Math.round(clickTime - startTime);
+    
+    hideAll();
+    resultScreen.style.display = 'block';
+    
+    finalTimeEl.textContent = reaction + ' ms';
+    finalTimeEl.style.color = reaction < 180 ? '#0f0' : reaction < 300 ? '#ffcc00' : '#f00';
+
+    let comment = '';
+    if (reaction < 150) comment = '神！這速度在 Nol 應該能搶到好位！🔥';
+    else if (reaction < 220) comment = '優秀！多練幾次，前排有希望';
+    else if (reaction < 350) comment = '還可以…再加速一點吧～';
+    else comment = '慢了點…韓粉競爭激烈，多練！';
+    
+    commentEl.textContent = comment;
+  });
+
+  function resetAll() {
+    hideAll();
+    startPractice();
+  }
+
+  // 頁面載入自動開始
+  window.onload = startPractice;
+</script>
+</body>
+</html>
