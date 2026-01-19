@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>티켓 대기열 연습</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 等待畫面 -->
+  <div id="queueScreen" class="screen active">
+    <div class="container">
+      <h1>접속 인원이 많아 대기 중입니다.</h1>
+      <p class="subtitle">잠시만 기다려주세요...</p>
+
+      <div class="queue-info">
+        <div class="my-queue">
+          <p>나의 대기순서</p>
+          <div class="number" id="queueNumber">11,601</div>
+        </div>
+
+        <div class="stats">
+          <p>전체 도전자 수: <strong>50,000명</strong></p>
+          <p>첫 클릭 반응속도: <strong id="firstClick">118</strong> ms</p>
+          <p>최종 접속 반응속도: <strong id="finalClick">118</strong> ms</p>
+        </div>
+      </div>
+
+      <button id="resetBtn" class="retry-btn">다시 하기</button>
+    </div>
+  </div>
+
+  <!-- 成功進入畫面（模擬） -->
+  <div id="successScreen" class="screen">
+    <div class="container">
+      <h1 style="color: #4caf50;">대기 완료!</h1>
+      <p>이제 좌석 선택 페이지로 이동합니다~</p>
+      <button id="backBtn">처음으로</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
