@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>티켓 대기열 연습 + 좌석선택</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0d1117;
+      color: #e6e6e6;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: #0d1117;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 500px;
+      padding: 30px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 1rem;
+      color: #ff3366;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      margin-bottom: 2.5rem;
+      opacity: 0.8;
+    }
+
+    .queue-info {
+      margin: 2rem 0;
+    }
+
+    .my-queue {
+      margin-bottom: 2rem;
+    }
+
+    .my-queue p {
+      font-size: 1.3rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .number {
+      font-size: 5.5rem;
+      font-weight: bold;
+      color: #00d4ff;
+      text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+      line-height: 1;
+    }
+
+    .stats {
+      font-size: 1.1rem;
+      line-height: 2;
+      background: rgba(255,255,255,0.05);
+      padding: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stats strong {
+      color: #ffdd57;
+    }
+
+    .retry-btn {
+      margin-top: 3rem;
+      padding: 16px 48px;
+      font-size: 1.3rem;
+      background: #ff3366;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .retry-btn:hover {
+      background: #ff6699;
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(255,51,102,0.4);
+    }
+
+    .captcha-box {
+      font-size: 3.5rem;
+      font-weight: bold;
+      letter-spacing: 12px;
+      background: #222;
+      padding: 20px 40px;
+      border-radius: 12px;
+      margin: 1.5rem 0;
+      color: #ffdd57;
+      border: 2px solid #444;
+      user-select: none;
+    }
+
+    #captchaInput {
+      font-size: 2rem;
+      text-transform: uppercase;
+      letter-spacing: 8px;
+      text-align: center;
+      padding: 14px;
+      width: 220px;
+      margin: 1rem 0;
+      border: 2px solid #555;
+      border-radius: 8px;
+      background: #111;
+      color: white;
+    }
+
+    #verifyBtn, #refreshCaptcha {
+      padding: 14px 40px;
+      font-size: 1.2rem;
+      margin: 0.8rem;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+    }
+
+    #verifyBtn {
+      background: #00d4ff;
+      color: black;
+    }
+
+    #verifyBtn:hover { background: #00aaff; }
+
+    #refreshCaptcha.small-btn {
+      background: #555;
+      color: white;
+      font-size: 1rem;
+      padding: 10px 24px;
+    }
+
+    .error { color: #ff3366; min-height: 1.5rem; }
+
+    .seat-container { flex-direction: column; }
+
+    .seat-map {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.5rem;
+      margin: 2rem 0;
+      max-width: 600px;
+    }
+
+    .zone {
+      width: 220px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: white;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.25s;
+      border: 3px solid transparent;
+    }
+
+    .zone:hover { transform: scale(1.08); }
+
+    .zone.vip    { background: #c41e3b; border-color: #ff3366; }
+    .zone.r      { background: #d2691e; }
+    .zone.s      { background: #006400; }
+    .zone.a      { background: #1e90ff; }
+    .zone.standing { background: linear-gradient(45deg, #8b00ff, #ff00aa); }
+
+    .selected-info {
+      margin: 2rem 0;
+      font-size: 1.3rem;
+      text-align: center;
+    }
+
+    #confirmSeat {
+      padding: 16px 60px;
+      font-size: 1.4rem;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    #confirmSeat.enabled {
+      cursor: pointer;
+      opacity: 1;
+    }
+
+    #confirmSeat.enabled:hover {
+      background: #66bb6a;
+      transform: translateY(-3px);
+    }
+
+    @media (max-width: 500px) {
+      .number { font-size: 4.5rem; }
+      h1 { font-size: 1.9rem; }
+      .captcha-box { font-size: 2.8rem; letter-spacing: 8px; padding: 15px 25px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 驗證碼畫面 -->
+  <div id="verifyScreen" class="screen active">
+    <div class="container">
+      <h1>보안 확인</h1>
+      <p>아래 6자리 코드를 입력해주세요</p>
+      <div class="captcha-box" id="captchaDisplay">XXXXXX</div>
+      
+      <input type="text" id="captchaInput" maxlength="6" placeholder="대문자 6자리 입력" autocomplete="off">
+      <button id="verifyBtn">확인</button>
+      <p id="verifyError" class="error"></p>
+      
+      <button id="refreshCaptcha" class="small-btn">새 코드 받기</button>
+    </div>
+  </div>
+
+  <!-- 等待畫面 -->
+  <div id="queueScreen" class="screen">
+    <div class="container">
+      <h1>접속 인원이 많아 대기 중입니다.</h1>
+      <p class="subtitle">잠시만 기다려주세요...</p>
+
+      <div class="queue-info">
+        <div class="my-queue">
+          <p>나의 대기순서</p>
+          <div class="number" id="queueNumber">11,601</div>
+        </div>
+
+        <div class="stats">
+          <p>전체 도전자 수: <strong id="totalUsers">50,000</strong>명</p>
+          <p>첫 클릭 반응속도: <strong id="firstClick">118</strong> ms</p>
+          <p>최종 접속 반응속도: <strong id="finalClick">118</strong> ms</p>
+        </div>
+      </div>
+
+      <button id="resetBtn" class="retry-btn">다시 하기</button>
+    </div>
+  </div>
+
+  <!-- 座位選擇假頁面 -->
+  <div id="seatScreen" class="screen">
+    <div class="container seat-container">
+      <h1>좌석 선택</h1>
+      <p class="subtitle">원하는 구역을 클릭하세요 (연습용)</p>
+
+      <div class="seat-map">
+        <div class="zone vip" data-price="VIP석 - 198,000원">VIP</div>
+        <div class="zone r">R석 - 168,000원</div>
+        <div class="zone s">S석 - 138,000원</div>
+        <div class="zone a">A석 - 98,000원</div>
+        <div class="zone standing">스탠딩 - 88,000원</div>
+      </div>
+
+      <div class="selected-info">
+        <p>선택한 구역: <span id="selectedZone">없음</span></p>
+        <button id="confirmSeat" disabled>이 구역으로 예매 진행</button>
+      </div>
+
+      <button id="backToQueue">처음으로 돌아가기</button>
+    </div>
+  </div>
+
+  <script>
+    // 元素
+    const verifyScreen   = document.getElementById('verifyScreen');
+    const queueScreen    = document.getElementById('queueScreen');
+    const seatScreen     = document.getElementById('seatScreen');
+
+    const captchaDisplay = document.getElementById('captchaDisplay');
+    const captchaInput   = document.getElementById('captchaInput');
+    const verifyBtn      = document.getElementById('verifyBtn');
+    const refreshCaptcha = document.getElementById('refreshCaptcha');
+    const verifyError    = document.getElementById('verifyError');
+
+    const queueNumberEl  = document.getElementById('queueNumber');
+    const totalUsersEl   = document.getElementById('totalUsers');
+    const resetBtn       = document.getElementById('resetBtn');
+
+    const zones          = document.querySelectorAll('.zone');
+    const selectedZoneEl = document.getElementById('selectedZone');
+    const confirmSeat    = document.getElementById('confirmSeat');
+    const backToQueue    = document.getElementById('backToQueue');
+
+    // 變數
+    let currentCaptcha = '';
+    let currentQueue = 11601;
+    let simulateInterval;
+
+    // 產生隨機6位大寫字母
+    function generateCaptcha() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      currentCaptcha = code;
+      captchaDisplay.textContent = code;
+      captchaInput.value = '';
+      verifyError.textContent = '';
+    }
+
+    // 驗證
+    function checkCaptcha() {
+      if (captchaInput.value.toUpperCase() === currentCaptcha) {
+        verifyScreen.classList.remove('active');
+        queueScreen.classList.add('active');
+        startCountdown();
+      } else {
+        verifyError.textContent = '잘못된 코드입니다. 다시 입력해주세요.';
+        captchaInput.value = '';
+        captchaInput.focus();
+      }
+    }
+
+    // 開始模擬排隊
+    function startCountdown() {
+      currentQueue = Math.floor(Math.random() * 30000) + 5000;
+      queueNumberEl.textContent = currentQueue.toLocaleString();
+      totalUsersEl.textContent = (50000 + Math.floor(Math.random()*5000)).toLocaleString();
+
+      // 模擬反應速度（隨機）
+      document.getElementById('firstClick').textContent = Math.floor(Math.random() * 40 + 80);
+      document.getElementById('finalClick').textContent = Math.floor(Math.random() * 40 + 80);
+
+      simulateInterval = setInterval(() => {
+        if (currentQueue > 0) {
+          currentQueue -= Math.floor(Math.random() * 8 + 3);
+          if (currentQueue < 0) currentQueue = 0;
+          queueNumberEl.textContent = currentQueue.toLocaleString();
+
+          if (currentQueue <= 30) {
+            clearInterval(simulateInterval);
+            setTimeout(() => {
+              queueScreen.classList.remove('active');
+              seatScreen.classList.add('active');
+            }, 1200);
+          }
+        }
+      }, 380);
+    }
+
+    // 重置全部
+    function resetAll() {
+      clearInterval(simulateInterval);
+      verifyScreen.classList.add('active');
+      queueScreen.classList.remove('active');
+      seatScreen.classList.remove('active');
+      generateCaptcha();
+      confirmSeat.disabled = true;
+      confirmSeat.classList.remove('enabled');
+      selectedZoneEl.textContent = '없음';
+    }
+
+    // 事件綁定
+    verifyBtn.addEventListener('click', checkCaptcha);
+    captchaInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') checkCaptcha();
+    });
+    refreshCaptcha.addEventListener('click', generateCaptcha);
+
+    resetBtn.addEventListener('click', resetAll);
+    backToQueue.addEventListener('click', resetAll);
+
+    // 座位選擇
+    zones.forEach(zone => {
+      zone.addEventListener('click', () => {
+        zones.forEach(z => z.style.borderColor = 'transparent');
+        zone.style.borderColor = '#ffdd57';
+        selectedZoneEl.textContent = zone.textContent.trim();
+        confirmSeat.disabled = false;
+        confirmSeat.classList.add('enabled');
+      });
+    });
+
+    confirmSeat.addEventListener('click', () => {
+      alert(`축하합니다! ${selectedZoneEl.textContent} 구역으로 예매를 시도합니다.\n(이건 연습 페이지라 실제 결제는 안 됩니다 ^^)`);
+    });
+
+    // 頁面載入
+    generateCaptcha();
+  </script>
+</body>
+</html>
