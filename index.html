@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nol Ticket 搶票手速練習 - Yin Kwan 專用</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #000;
+      color: #fff;
+      text-align: center;
+      overflow: hidden;
+    }
+    #container {
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.8em;
+      margin: 10px 0;
+    }
+    .screen {
+      display: none;
+      padding: 30px 20px;
+      min-height: 60vh;
+      box-sizing: border-box;
+    }
+    #queueScreen {
+      background: linear-gradient(#111, #000);
+    }
+    #buttonScreen {
+      background: #111;
+    }
+    #count {
+      font-size: 4.5em;
+      font-weight: bold;
+      margin: 20px 0;
+      color: #ffcc00;
+    }
+    .info {
+      font-size: 1.1em;
+      line-height: 1.6;
+      margin: 15px 0;
+      color: #ccc;
+    }
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 18px 40px;
+      font-size: 1.4em;
+      border-radius: 8px;
+      margin: 30px auto;
+      display: block;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:hover {
+      background: #0080ff;
+      transform: scale(1.05);
+    }
+    button:active {
+      transform: scale(0.95);
+      background: #004080;
+    }
+    #countdown {
+      font-size: 3.5em;
+      font-weight: bold;
+      color: #ff4444;
+      margin: 40px 0;
+    }
+    .small {
+      font-size: 0.9em;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+<div id="container">
+
+  <!-- 等待畫面 -->
+  <div id="queueScreen" class="screen">
+    <h1>접속 인원이 많아 대기 중입니다.</h1>
+    <div class="info">
+      나의 대기순서<br>
+      <div id="count">11,601</div>
+      전체 도전자 수: 50,000명<br><br>
+      첫 클릭 반응속도: — ms<br>
+      최종 접속 반응속도: — ms
+    </div>
+  </div>
+
+  <!-- 倒數畫面 -->
+  <div id="countdownScreen" class="screen">
+    <h1>오픈 준비 중...</h1>
+    <div id="countdown">3</div>
+    <div class="small">準備好了就一直盯著螢幕！</div>
+  </div>
+
+  <!-- 按鈕出現畫面 -->
+  <div id="buttonScreen" class="screen">
+    <h1 style="color:#0f0;">지금 바로 접속하기 !</h1>
+    <button id="bigButton">접속하기</button>
+    <div class="info small">
+      按下去後會顯示你的反應時間<br>
+      目標：越快越好（<150ms 算神速）
+    </div>
+  </div>
+
+  <!-- 結果畫面 -->
+  <div id="resultScreen" class="screen">
+    <h1>你的反應時間</h1>
+    <div id="finalTime" style="font-size:5em; font-weight:bold; color:#0f0;">— ms</div>
+    <div class="info">
+      <p id="comment"></p>
+    </div>
+    <button onclick="resetAll()">再次挑戰</button>
+  </div>
+
+</div>
+
+<script>
+  const queueScreen = document.getElementById('queueScreen');
+  const countdownScreen = document.getElementById('countdownScreen');
+  const buttonScreen = document.getElementById('buttonScreen');
+  const resultScreen = document.getElementById('resultScreen');
+  const countdownEl = document.getElementById('countdown');
+  const finalTimeEl = document.getElementById('finalTime');
+  const commentEl = document.getElementById('comment');
+  const bigButton = document.getElementById('bigButton');
+
+  let startTime = 0;
+  let countdownTimer;
+  let clickTime;
+
+  function hideAll() {
+    queueScreen.style.display = 'none';
+    countdownScreen.style.display = 'none';
+    buttonScreen.style.display = 'none';
+    resultScreen.style.display = 'none';
+  }
+
+  function startPractice() {
+    hideAll();
+    queueScreen.style.display = 'block';
+    
+    // 隨機 3～12 秒後開始倒數（模擬不同開賣狀況）
+    const randomDelay = Math.random() * 9000 + 3000;
+    setTimeout(() => {
+      hideAll();
+      countdownScreen.style.display = 'block';
+      let cd = 3;
+      countdownEl.textContent = cd;
+      
+      countdownTimer = setInterval(() => {
+        cd--;
+        if (cd > 0) {
+          countdownEl.textContent = cd;
+        } else {
+          clearInterval(countdownTimer);
+          hideAll();
+          buttonScreen.style.display = 'block';
+          startTime = performance.now();
+        }
+      }, 1000);
+    }, randomDelay);
+  }
+
+  // 點擊大按鈕
+  bigButton.addEventListener('click', () => {
+    clickTime = performance.now();
+    const reaction = Math.round(clickTime - startTime);
+    
+    hideAll();
+    resultScreen.style.display = 'block';
+    
+    finalTimeEl.textContent = reaction + ' ms';
+    finalTimeEl.style.color = reaction < 180 ? '#0f0' : reaction < 300 ? '#ffcc00' : '#f00';
+
+    let comment = '';
+    if (reaction < 150) comment = '神速！Nol Ticket 應該有機會搶到前排！🔥';
+    else if (reaction < 220) comment = '很不錯的速度！多練幾次應該可以進前 1000';
+    else if (reaction < 350) comment = '普通人類水準，再練練手速吧～';
+    else comment = '有點慢喔... 多練習才能跟上韓國粉絲！';
+    
+    commentEl.textContent = comment;
+  });
+
+  function resetAll() {
+    hideAll();
+    startPractice();
+  }
+
+  // 頁面載入就開始
+  window.onload = startPractice;
+</script>
+</body>
+</html>
