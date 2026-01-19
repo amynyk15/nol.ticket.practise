@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>K-pop 搶票全流程練習 - 驗證碼 + 選位 (修正版)</title>
+  <style>
+    body { margin:0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background:#000; color:#fff; text-align:center; overflow:hidden; }
+    #setup { margin: 40px 20px; }
+    select, button, input { padding:12px 20px; font-size:1.2em; margin:10px; border-radius:8px; border:none; cursor:pointer; }
+    select, input { background:#222; color:#fff; }
+    .screen { display:none; padding:30px 20px; min-height:70vh; box-sizing:border-box; }
+    #queueScreen { background:linear-gradient(#111,#000); }
+    #countdownScreen { display:flex; flex-direction:column; justify-content:center; align-items:center; }
+    #captchaScreen, #seatScreen { background:#0a0a0a; }
+    button.main { color:white; border:none; padding:20px 60px; font-size:1.8em; font-weight:bold; border-radius:12px; margin:40px auto; display:block; cursor:pointer; box-shadow:0 8px 16px rgba(0,0,0,0.5); transition:all 0.12s; }
+    button.main:hover { transform:translateY(-3px); }
+    button.main:active { transform:translateY(2px); }
+    #countdown { font-size:9em; font-weight:900; text-shadow:0 0 20px currentColor; margin:0; line-height:1; }
+    #countdownText { font-size:2.2em; margin:20px 0; font-weight:bold; }
+    .small { font-size:0.95em; color:#aaa; }
+    #captchaInput { width:220px; text-align:center; font-size:2.5em; letter-spacing:12px; }
+    #timer { font-size:2em; color:#ff4444; margin:20px; }
+    #seatGrid { display:grid; grid-template-columns:repeat(9,1fr); gap:5px; max-width:380px; margin:20px auto; }
+    .seat { width:38px; height:38px; border:2px solid #444; border-radius:6px; cursor:pointer; font-size:0.9em; display:flex; align-items:center; justify-content:center; }
+    .available { background:#00cc66; color:#000; font-weight:bold; }
+    .selected { background:#ffcc00; color:#000; font-weight:bold; }
+    .taken { background:#444; color:#888; cursor:default; }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <div id="setup">
+    <h2>K-pop 搶票全流程練習（含驗證碼 + 選位）</h2>
+    <label>選擇平台/團體模式：</label><br>
+    <select id="modeSelect">
+      <option value="nol">Nol/Interpark (BTS, SEVENTEEN 等)</option>
+      <option value="weverse">Weverse (TXT, ENHYPEN 等)</option>
+      <option value="yes24">YES24 (aespa 等)</option>
+      <option value="melon">Melon Ticket</option>
+    </select><br>
+    <button class="main" onclick="startPractice()">開始全流程練習</button>
+  </div>
+
+  <!-- 等待畫面 -->
+  <div id="queueScreen" class="screen">
+    <h1 id="queueTitle">접속 인원이 많아 대기 중입니다.</h1>
+    <div class="info small">나의 대기순서: 11,601 / 전체: 50,000명<br>稍等一下，很快就會輪到你！</div>
+  </div>
+
+  <!-- 倒數畫面 -->
+  <div id="countdownScreen" class="screen">
+    <div id="countdownText">오픈 준비 중입니다</div>
+    <div id="countdown">5</div>
+    <div class="small">盯緊！倒數結束就衝！</div>
+  </div>
+
+  <!-- 驗證碼畫面 -->
+  <div id="captchaScreen" class="screen">
+    <h1 style="color:#ffcc00;">보안 인증 (CAPTCHA)</h1>
+    <p>請快速輸入以下 6 位驗證碼</p>
+    <div id="captchaCode" style="font-size:3.5em; letter-spacing:15px; margin:30px 0; font-weight:bold; color:#0f0; background:#111; padding:10px; border-radius:8px;"></div>
+    <input id="captchaInput" type="text" maxlength="6" placeholder="輸入這裡" autocomplete="off" autofocus/>
+    <div id="captchaTimer">剩餘時間: 15초</div>
+    <button id="submitCaptcha" class="main">確認驗證碼</button>
+    <div class="small">錯或超時 = 失敗！練盲打速度～</div>
+  </div>
+
+  <!-- 選座位畫面 -->
+  <div id="seatScreen" class="screen">
+    <h1 style="color:#0f0;">좌석 선택 (Seat Selection)</h1>
+    <p>限時 10 秒內點選綠色可用座位！</p>
+    <div id="seatGrid"></div>
+    <div id="seatTimer">剩餘: 10초</div>
+    <p>已選: <span id="selectedCount">0</span> 個座位</p>
+    <button id="confirmSeat" class="main" style="display:none;">確認選位 → 完成</button>
+  </div>
+
+  <!-- 結果畫面 -->
+  <div id="resultScreen" class="screen">
+    <h1>練習結果</h1>
+    <div id="finalTime" style="font-size:4em; font-weight:bold; color:#0f0;">— ms</div>
+    <div class="info">
+      <p id="comment"></p>
+      <p id="seatResult"></p>
+    </div>
+    <button class="main" onclick="resetAll()">再練一次</button>
+  </div>
+</div>
+
+<script>
+  const modes = {
+    nol: { queueTitle: "접속 인원이 많아 대기 중입니다.", countdownText: "오픈 준비 중입니다", countdownStart: 5, countdownColor: "#ff3333", bg: "#0a0a0a" },
+    weverse: { queueTitle: "대기열에 있습니다. 잠시만 기다려주세요.", countdownText: "티켓 오픈 임박!", countdownStart: 5, countdownColor: "#00cc66", bg: "#0d1a0f" },
+    yes24: { queueTitle: "예매 대기 중입니다.", countdownText: "오픈 준비 완료!", countdownStart: 6, countdownColor: "#cc66ff", bg: "#1a0d1f" },
+    melon: { queueTitle: "접속자가 많아 대기중입니다.", countdownText: "티켓 오픈 곧 시작!", countdownStart: 10, countdownColor: "#33cc33", bg: "#0a1a0a" }
+  };
+
+  let currentMode, startTime, countdownTimer, captchaTimer, seatTimer;
+  let captchaCode = '';
+  let selectedSeats = 0;
+
+  const setup = document.getElementById('setup');
+  const queueScreen = document.getElementById('queueScreen');
+  const countdownScreen = document.getElementById('countdownScreen');
+  const captchaScreen = document.getElementById('captchaScreen');
+  const seatScreen = document.getElementById('seatScreen');
+  const resultScreen = document.getElementById('resultScreen');
+
+  function hideAllScreens() {
+    queueScreen.style.display = 'none';
+    countdownScreen.style.display = 'none';
+    captchaScreen.style.display = 'none';
+    seatScreen.style.display = 'none';
+    resultScreen.style.display = 'none';
+  }
+
+  function showSetup() {
+    hideAllScreens();
+    setup.style.display = 'block';
+  }
+
+  function applyMode(modeKey) {
+    currentMode = modes[modeKey];
+    document.getElementById('queueTitle').textContent = currentMode.queueTitle;
+    document.getElementById('countdownText').textContent = currentMode.countdownText;
+    document.getElementById('countdown').style.color = currentMode.countdownColor;
+    countdownScreen.style.background = currentMode.bg;
+    captchaScreen.style.background = currentMode.bg;
+    seatScreen.style.background = currentMode.bg;
+  }
+
+  function startPractice() {
+    const selected = document.getElementById('modeSelect').value;
+    applyMode(selected);
+
+    setup.style.display = 'none';
+    hideAllScreens();
+    queueScreen.style.display = 'block';
+
+    startTime = performance.now(); // 全流程開始計時
+
+    const randomDelay = Math.random() * 12000 + 4000; // 4~16秒
+    setTimeout(() => {
+      hideAllScreens();
+      countdownScreen.style.display = 'flex';
+      let cd = currentMode.countdownStart;
+      document.getElementById('countdown').textContent = cd;
+
+      countdownTimer = setInterval(() => {
+        cd--;
+        document.getElementById('countdown').textContent = cd;
+        if (cd <= 0) {
+          clearInterval(countdownTimer);
+          hideAllScreens();
+          startCaptcha();
+        }
+      }, 900);
+    }, randomDelay);
+  }
+
+  function generateCaptcha() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    captchaCode = '';
+    for (let i = 0; i < 6; i++) {
+      captchaCode += chars[Math.floor(Math.random() * chars.length)];
+    }
+    document.getElementById('captchaCode').textContent = captchaCode;
+  }
+
+  function startCaptcha() {
+    hideAllScreens();
+    captchaScreen.style.display = 'block';
+    generateCaptcha();
+    const input = document.getElementById('captchaInput');
+    input.value = '';
+    input.focus();
+    let timeLeft = 15;
+    document.getElementById('captchaTimer').textContent = `剩餘時間: ${timeLeft}초`;
+
+    captchaTimer = setInterval(() => {
+      timeLeft--;
+      document.getElementById('captchaTimer').textContent = `剩餘時間: ${timeLeft}초`;
+      if (timeLeft <= 0) {
+        clearInterval(captchaTimer);
+        showResult(false, '驗證碼超時！輸入太慢了～', 0);
+      }
+    }, 1000);
+  }
+
+  document.getElementById('submitCaptcha').addEventListener('click', () => {
+    clearInterval(captchaTimer);
+    const input = document.getElementById('captchaInput').value.toUpperCase().trim();
+    if (input === captchaCode) {
+      startSeatSelection();
+    } else {
+      showResult(false, '驗證碼錯誤！請再練輸入～', 0);
+    }
+  });
+
+  function startSeatSelection() {
+    hideAllScreens();
+    seatScreen.style.display = 'block';
+    selectedSeats = 0;
+    document.getElementById('selectedCount').textContent = 0;
+    document.getElementById('confirmSeat').style.display = 'none';
+
+    const grid = document.getElementById('seatGrid');
+    grid.innerHTML = '';
+    for (let i = 0; i < 81; i++) {
+      const seat = document.createElement('div');
+      seat.classList.add('seat');
+      if (Math.random() > 0.65) { // ~35% 可用，增加難度
+        seat.classList.add('available');
+        seat.textContent = 'OK';
+        seat.addEventListener('click', () => {
+          if (seat.classList.contains('available')) {
+            seat.classList.remove('available');
+            seat.classList.add('selected');
+            seat.textContent = '選';
+            selectedSeats++;
+            document.getElementById('selectedCount').textContent = selectedSeats;
+            if (selectedSeats >= 1) document.getElementById('confirmSeat').style.display = 'block';
+          }
+        });
+      } else {
+        seat.classList.add('taken');
+        seat.textContent = 'X';
+      }
+      grid.appendChild(seat);
+    }
+
+    let timeLeft = 10;
+    document.getElementById('seatTimer').textContent = `剩餘: ${timeLeft}초`;
+    seatTimer = setInterval(() => {
+      timeLeft--;
+      document.getElementById('seatTimer').textContent = `剩餘: ${timeLeft}초`;
+      if (timeLeft <= 0) {
+        clearInterval(seatTimer);
+        showResult(true, `時間到！選到 ${selectedSeats} 個座位`, selectedSeats);
+      }
+    }, 1000);
+  }
+
+  document.getElementById('confirmSeat').addEventListener('click', () => {
+    clearInterval(seatTimer);
+    showResult(true, `成功選到 ${selectedSeats} 個座位！`, selectedSeats);
+  });
+
+  function showResult(success, extra, seats) {
+    hideAllScreens();
+    resultScreen.style.display = 'block';
+    const totalTime = Math.round(performance.now() - startTime);
+    document.getElementById('finalTime').textContent = `${totalTime} ms (全流程)`;
+    document.getElementById('finalTime').style.color = totalTime < 15000 ? '#0f0' : totalTime < 25000 ? '#ffcc00' : '#f00';
+
+    let comment = success ? '恭喜！模擬成功 ' : '失敗了... ';
+    comment += extra + ' ';
+    if (totalTime < 10000) comment += '(神速！真實有機會搶到)';
+    else if (totalTime < 20000) comment += '(還OK，多練驗證+點位)';
+    else comment += '(太慢... 韓國粉絲太猛了)';
+
+    document.getElementById('comment').textContent = comment;
+    document.getElementById('seatResult').textContent = `選位: ${seats} 個`;
+  }
+
+  function resetAll() {
+    clearInterval(countdownTimer);
+    clearInterval(captchaTimer);
+    clearInterval(seatTimer);
+    showSetup();
+  }
+
+  // 初始顯示設定畫面
+  showSetup();
+</script>
+</body>
+</html>
