@@ -76,6 +76,22 @@
       font-size: 0.9em;
       color: #999;
     }
+
+    /* 禁止所有文字被選取高亮，模擬真實搶票App感覺 */
+  body, #container, h1, .screen, .info, #count, #countdown, #countdownText, button {
+    -webkit-user-select: none;
+       -moz-user-select: none;
+        -ms-user-select: none;
+            user-select: none;
+  }
+
+  /* 如果之後加了輸入框，再把輸入框例外處理 */
+  input {
+    -webkit-user-select: text;
+       -moz-user-select: text;
+        -ms-user-select: text;
+            user-select: text;
+  }
   </style>
 </head>
 <body>
